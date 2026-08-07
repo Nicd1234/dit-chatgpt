@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Nyxeos Chromium Voice Fix",
+  "version": "2.0.0",
+  "description": "Contourne le blocage Chromium enumerateDevices sur Raspberry Pi pour le mode vocal ChatGPT.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "main.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}
