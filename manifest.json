@@ -1,1 +1,1 @@
-{"name":"dit chatgpt","version":"1.0.0","portable":true,"model":"vosk-model-small-fr-0.22"}
+{"name":"dit chatgpt","version":"1.1.0","portable":true,"model":"vosk-model-small-fr-0.22","voiceprint_activation":true}

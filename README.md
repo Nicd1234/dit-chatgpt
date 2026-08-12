@@ -18,4 +18,14 @@ Dépendances système : PipeWire/PulseAudio (`pactl`, `parec`, `paplay`), `wtype
 
 Le modèle français Vosk est inclus dans `model/`. Les noms USB peuvent être forcés avec `DIT_CHATGPT_MICROPHONE` et `DIT_CHATGPT_SPEAKERS`.
 
+## Empreinte vocale d’activation
+
+Après installation, lance :
+
+```sh
+DIT_CHATGPT_ROOT="$PWD" ./scripts/enroll_dit_chatgpt_voice.py
+```
+
+Dis « dit ChatGPT » cinq fois. L’empreinte reste locale et filtre uniquement les démarrages; la commande d’arrêt ne demande aucune empreinte. Avant cet enregistrement, le filtre est désactivé.
+
 Les originaux Nyxeos ne sont ni déplacés ni remplacés.

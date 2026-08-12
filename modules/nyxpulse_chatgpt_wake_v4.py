@@ -4,12 +4,18 @@
 from nyxpulse_chatgpt_wake_v2 import *  # noqa: F403
 import math
 import os
+try:
+    from nyx_voiceprint_v1 import verify as verify_voiceprint
+except ImportError:
+    verify_voiceprint = None
 
 
 MIN_RAW_RMS = 100.0
 MIN_RAW_PEAK = 500
 CONTROLLER = Path(__file__).with_name("nyx_chatgpt_voice_controller_v4.py")  # noqa: F405
 MODEL_OVERRIDE = os.environ.get("DIT_CHATGPT_MODEL")
+VOICEPRINT_PROFILE = Path(os.environ.get("DIT_CHATGPT_VOICEPRINT_PROFILE", Path(__file__).resolve().parents[1] / "logs" / "dit_chatgpt_voiceprint.json"))
+VOICEPRINT_THRESHOLD = float(os.environ.get("DIT_CHATGPT_VOICEPRINT_THRESHOLD", "0.78"))
 
 
 def dispatch(action: str, heard: str, wait: bool = False):
@@ -92,6 +98,7 @@ def listen(model_path: Path, once: bool = False, cooldown: float = 5.0) -> int: 
     suppress_start_until = 0.0
     utterance_max_rms = 0.0
     utterance_max_peak = 0
+    utterance_raw = bytearray()
     try:
         while True:
             if process.stdout is None:
@@ -100,14 +107,17 @@ def listen(model_path: Path, once: bool = False, cooldown: float = 5.0) -> int: 
             if not raw_chunk:
                 return 2
             rms, peak = pcm16_levels(raw_chunk)
+            utterance_raw.extend(raw_chunk)
             utterance_max_rms = max(utterance_max_rms, rms)
             utterance_max_peak = max(utterance_max_peak, peak)
             accepted = rec.AcceptWaveform(amplify_pcm16(raw_chunk))  # noqa: F405
             text = extract_text(rec.Result() if accepted else rec.PartialResult())  # noqa: F405
             final_rms, final_peak = utterance_max_rms, utterance_max_peak
+            final_raw = bytes(utterance_raw)
             if accepted:
                 utterance_max_rms = 0.0
                 utterance_max_peak = 0
+                utterance_raw.clear()
             if text and text != last_partial:
                 print(f"Vosk {'final' if accepted else 'partiel'}: {text}", flush=True)
                 last_partial = text
@@ -122,6 +132,15 @@ def listen(model_path: Path, once: bool = False, cooldown: float = 5.0) -> int: 
                 if accepted:
                     print(f"commande rejetée: validation acoustique/texte rms={final_rms:.1f} pic={final_peak}", flush=True)
                 continue
+            if action == "start" and VOICEPRINT_PROFILE.exists() and verify_voiceprint is not None:
+                try:
+                    voice_ok, voice_score = verify_voiceprint(final_raw, VOICEPRINT_PROFILE, VOICEPRINT_THRESHOLD)
+                except ValueError:
+                    voice_ok, voice_score = False, 0.0
+                if not voice_ok:
+                    print(f"démarrage rejeté: empreinte vocale insuffisante score={voice_score:.3f}", flush=True)
+                    continue
+                print(f"empreinte vocale validée score={voice_score:.3f}", flush=True)
             if action == "start" and current_time < suppress_start_until:
                 print("démarrage ignoré: protection post-arrêt active", flush=True)
                 continue
